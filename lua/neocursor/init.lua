@@ -1,12 +1,12 @@
--- nursor: public API. A Cursor-style agent chat panel for Neovim powered by
+-- neocursor: public API. A Cursor-style agent chat panel for Neovim powered by
 -- the cursor-agent CLI.
-local config = require("nursor.config")
+local config = require("neocursor.config")
 
 local M = {}
 
--- Lazily require the UI so that merely `require("nursor")` is cheap.
+-- Lazily require the UI so that merely `require("neocursor")` is cheap.
 local function ui()
-  return require("nursor.ui")
+  return require("neocursor.ui")
 end
 
 -- Optional. Plugin works with defaults without calling setup().
@@ -17,12 +17,12 @@ function M.setup(opts)
   if gk.toggle and gk.toggle ~= "" then
     vim.keymap.set("n", gk.toggle, function()
       M.toggle()
-    end, { silent = true, desc = "nursor: toggle panel" })
+    end, { silent = true, desc = "neocursor: toggle panel" })
   end
   if gk.ask and gk.ask ~= "" then
     vim.keymap.set("n", gk.ask, function()
       M.open()
-    end, { silent = true, desc = "nursor: ask" })
+    end, { silent = true, desc = "neocursor: ask" })
     vim.keymap.set("x", gk.ask, function()
       -- Send the current visual selection.
       local l1 = vim.fn.line("v")
@@ -32,7 +32,7 @@ function M.setup(opts)
       end
       vim.cmd("normal! \27") -- leave visual mode
       M.ask_range(0, l1, l2, nil)
-    end, { silent = true, desc = "nursor: ask about selection" })
+    end, { silent = true, desc = "neocursor: ask about selection" })
   end
 
   return config.options
@@ -85,7 +85,7 @@ end
 -- Ask about an explicit line range in a buffer.
 -- buf 0 means current buffer. question may be nil (just attach context).
 function M.ask_range(buf, l1, l2, question)
-  local context = require("nursor.context")
+  local context = require("neocursor.context")
   if buf == 0 then
     buf = vim.api.nvim_get_current_buf()
   end

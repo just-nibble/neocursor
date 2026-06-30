@@ -1,5 +1,5 @@
--- nursor: :checkhealth nursor
-local config = require("nursor.config")
+-- neocursor: :checkhealth neocursor
+local config = require("neocursor.config")
 
 local M = {}
 
@@ -10,7 +10,7 @@ local warn = health.warn or health.report_warn
 local err = health.error or health.report_error
 
 function M.check()
-  start("nursor")
+  start("neocursor")
 
   local v = vim.version and vim.version() or nil
   local vstr = v and string.format("%d.%d.%d", v.major, v.minor, v.patch) or "unknown"
@@ -27,7 +27,7 @@ function M.check()
   else
     err("cursor-agent not found on PATH (configured cmd = '" .. bin .. "')", {
       "Install it from https://cursor.com/cli and ensure it is on your PATH,",
-      "or set require('nursor').setup({ cmd = '/full/path/to/cursor-agent' }).",
+      "or set require('neocursor').setup({ cmd = '/full/path/to/cursor-agent' }).",
     })
   end
 

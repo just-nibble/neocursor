@@ -1,4 +1,4 @@
-# nursor
+# neocursor
 
 A Cursor-style agent chat panel for **Neovim**, powered by the
 [`cursor-agent`](https://cursor.com/cli) CLI.
@@ -8,21 +8,21 @@ just like Cursor's chat, but inside Neovim. Ask about the whole file, the
 current line, or a visual selection. Switch between read-only **ask** mode and a
 full **agent** that can edit files and run commands.
 
-![layout](https://placehold.co/640x360?text=nursor)
+![layout](https://placehold.co/640x360?text=neocursor)
 
 ## Features
 
 - Sidebar chat panel: conversation on top, prompt input at the bottom.
 - Live token streaming via `cursor-agent --output-format stream-json --stream-partial-output`.
-- Ask about a **visual selection** or **current line** (`:NursorAsk`).
+- Ask about a **visual selection** or **current line** (`:NeocursorAsk`).
 - Per-panel **session continuity** (follow-up questions reuse `--resume`).
 - Toggle between **ask** (read-only) and **agent** (can edit) without leaving the panel.
-- **Model picker** (`:NursorModel`) populated from `cursor-agent --list-models`.
+- **Model picker** (`:NeocursorModel`) populated from `cursor-agent --list-models`.
 - **View agent changes**: file edits are shown inline as unified-diff hunks. Review
   each change and **accept** (keep) or **reject** (revert to the pre-edit file).
-  `:NursorReview` opens a side-by-side diff with `a` / `r` keymaps.
+  `:NeocursorReview` opens a side-by-side diff with `a` / `r` keymaps.
 - Token-usage / duration readout after each answer.
-- `:checkhealth nursor`.
+- `:checkhealth neocursor`.
 
 ## Requirements
 
@@ -40,8 +40,8 @@ cursor-agent login
 
 ```lua
 {
-  "chadify/nursor",          -- or a local dir: dir = "~/code/chadify-cursor"
-  cmd = { "Nursor", "NursorAsk", "NursorOpen", "NursorToggle", "NursorNew" },
+  "chadify/neocursor",          -- or a local dir: dir = "~/code/chadify-cursor"
+  cmd = { "Neocursor", "NeocursorAsk", "NeocursorOpen", "NeocursorToggle", "NeocursorNew" },
   opts = {
     -- global_keymaps = { toggle = "<leader>cc", ask = "<leader>ca" },
   },
@@ -57,7 +57,7 @@ set runtimepath+=~/code/chadify-cursor
 Then optionally, in `init.lua`:
 
 ```lua
-require("nursor").setup({})
+require("neocursor").setup({})
 ```
 
 `setup()` is optional — the plugin works with defaults out of the box.
@@ -66,24 +66,24 @@ require("nursor").setup({})
 
 | Command | Description |
 | --- | --- |
-| `:Nursor` | Toggle the panel. |
-| `:NursorOpen` / `:NursorClose` | Open / close the panel. |
-| `:NursorNew` | Start a fresh chat (clears the session). |
-| `:NursorAsk {question}` | Ask about the current line. In **visual mode**, ask about the selection. |
-| `:NursorMode` | Cycle the agent mode (ask ⇄ agent). |
-| `:NursorModel` | Pick the model (from `cursor-agent --list-models`). |
-| `:NursorReview` | Review a pending change (side-by-side diff; `a` accept, `r` reject). |
-| `:NursorAccept` | Accept a pending change (keep the agent edit). |
-| `:NursorReject` | Reject a pending change (restore the file to before the edit). |
-| `:NursorDiff` | View any change as a read-only side-by-side diff. |
-| `:NursorStop` | Stop an in-flight response. |
+| `:Neocursor` | Toggle the panel. |
+| `:NeocursorOpen` / `:NeocursorClose` | Open / close the panel. |
+| `:NeocursorNew` | Start a fresh chat (clears the session). |
+| `:NeocursorAsk {question}` | Ask about the current line. In **visual mode**, ask about the selection. |
+| `:NeocursorMode` | Cycle the agent mode (ask ⇄ agent). |
+| `:NeocursorModel` | Pick the model (from `cursor-agent --list-models`). |
+| `:NeocursorReview` | Review a pending change (side-by-side diff; `a` accept, `r` reject). |
+| `:NeocursorAccept` | Accept a pending change (keep the agent edit). |
+| `:NeocursorReject` | Reject a pending change (restore the file to before the edit). |
+| `:NeocursorDiff` | View any change as a read-only side-by-side diff. |
+| `:NeocursorStop` | Stop an in-flight response. |
 
 Typical flow:
 
-1. `:Nursor` opens the sidebar with the cursor in the prompt box.
+1. `:Neocursor` opens the sidebar with the cursor in the prompt box.
 2. Type a question, press `<C-s>` to send. The answer streams in above.
 3. Ask follow-ups — they continue the same session.
-4. Select lines in a file, then `:NursorAsk how can I simplify this?`
+4. Select lines in a file, then `:NeocursorAsk how can I simplify this?`
 
 ### Panel keymaps (buffer-local)
 
@@ -92,7 +92,7 @@ Typical flow:
 | `<C-s>` | Send the prompt (insert or normal mode) |
 | `<CR>` | Send the prompt (normal mode) |
 | `<C-n>` | New chat |
-| `<C-t>` | Toggle ask ⇄ agent |
+| `<M-t>` | Toggle ask ⇄ agent (inside panel only) |
 | `<C-g>` | Pick model |
 | `<C-y>` | Review pending change (opens diff; `a` accept, `r` reject) |
 | `<C-a>` | Accept pending change |
@@ -106,7 +106,7 @@ Typical flow:
 Defaults (pass overrides to `setup`):
 
 ```lua
-require("nursor").setup({
+require("neocursor").setup({
   cmd = "cursor-agent",        -- path/name of the binary
   model = nil,                 -- e.g. "sonnet-4.5"; nil => Auto
   default_mode = "ask",        -- "ask" | "agent"
@@ -132,7 +132,7 @@ require("nursor").setup({
     submit = "<C-s>",
     submit_normal = "<CR>",
     new_chat = "<C-n>",
-    toggle_mode = "<C-t>",
+    toggle_mode = "<M-t>",
     model = "<C-g>",
     review = "<C-y>",
     accept = "<C-a>",
@@ -143,8 +143,8 @@ require("nursor").setup({
   },
 
   global_keymaps = {           -- only applied when setup() is called
-    toggle = nil,              -- e.g. "<leader>cc"
-    ask = nil,                 -- e.g. "<leader>ca" (normal + visual)
+    toggle = "<leader>cc",     -- open/close panel (do NOT use <C-t> — that's Vim tag pop)
+    ask = "<leader>ca",        -- ask about line/selection (normal + visual)
   },
 })
 ```
@@ -161,7 +161,7 @@ require("nursor").setup({
 
 Each turn spawns `cursor-agent -p --output-format stream-json
 --stream-partial-output` (plus `--mode ask` or `--force`, and `--resume
-<session>` for follow-ups). nursor parses the NDJSON event stream:
+<session>` for follow-ups). neocursor parses the NDJSON event stream:
 
 - `system/init` → captures the `session_id`.
 - `assistant` text events with a `timestamp_ms` **and no** `model_call_id` are the

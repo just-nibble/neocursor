@@ -1,6 +1,6 @@
--- nursor: gathers editor context (current file, line, or visual selection)
+-- neocursor: gathers editor context (current file, line, or visual selection)
 -- to attach to a prompt.
-local config = require("nursor.config")
+local config = require("neocursor.config")
 
 local M = {}
 
@@ -13,7 +13,7 @@ local function relpath(name)
 end
 
 -- Inspect the current tab and return the first "real" editing window/buffer
--- that is not one of the nursor panel buffers.
+-- that is not one of the neocursor panel buffers.
 -- exclude: a set-like table of buffer numbers to skip.
 function M.current_origin(exclude)
   exclude = exclude or {}

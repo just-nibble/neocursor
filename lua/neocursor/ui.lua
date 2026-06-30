@@ -1,9 +1,9 @@
--- nursor: the sidebar chat UI (conversation + prompt windows) and streaming
+-- neocursor: the sidebar chat UI (conversation + prompt windows) and streaming
 -- render of cursor-agent responses.
-local config = require("nursor.config")
-local agent = require("nursor.agent")
-local context = require("nursor.context")
-local diff = require("nursor.diff")
+local config = require("neocursor.config")
+local agent = require("neocursor.agent")
+local context = require("neocursor.context")
+local diff = require("neocursor.diff")
 
 local M = {}
 
@@ -83,7 +83,7 @@ local function winbar_text()
     local frame = o.ui.spinner[state.spinner.idx] or ""
     left = frame .. " thinking…"
   else
-    left = " nursor"
+    left = " neocursor"
   end
   local sess = state.session_id and "  · session" or "  · new"
   local pending = #diff.pending(state.changes)
@@ -312,7 +312,7 @@ function M.submit()
     return
   end
   if state.busy then
-    vim.notify("nursor: still responding (use stop to cancel)", vim.log.levels.WARN)
+    vim.notify("neocursor: still responding (use stop to cancel)", vim.log.levels.WARN)
     return
   end
 
@@ -379,20 +379,20 @@ function M.toggle_mode()
   end
   state.mode = cycle[(idx % #cycle) + 1]
   update_winbar()
-  vim.notify("nursor: mode → " .. state.mode, vim.log.levels.INFO)
+  vim.notify("neocursor: mode → " .. state.mode, vim.log.levels.INFO)
 end
 
 -- Pick a model via cursor-agent --list-models + vim.ui.select.
 function M.pick_model()
-  vim.notify("nursor: loading models…", vim.log.levels.INFO)
+  vim.notify("neocursor: loading models…", vim.log.levels.INFO)
   agent.list_models(function(models, code)
     if code ~= 0 or #models == 0 then
-      vim.notify("nursor: could not list models (is cursor-agent installed?)", vim.log.levels.ERROR)
+      vim.notify("neocursor: could not list models (is cursor-agent installed?)", vim.log.levels.ERROR)
       return
     end
     local current = state.model or "auto"
     vim.ui.select(models, {
-      prompt = "nursor: select model",
+      prompt = "neocursor: select model",
       format_item = function(m)
         local mark = (m.id == current) and "● " or "  "
         return mark .. m.label .. "  (" .. m.id .. ")"
@@ -404,7 +404,7 @@ function M.pick_model()
       state.model = choice.id
       config.options.model = (choice.id == "auto") and nil or choice.id
       update_winbar()
-      vim.notify("nursor: model → " .. choice.label, vim.log.levels.INFO)
+      vim.notify("neocursor: model → " .. choice.label, vim.log.levels.INFO)
     end)
   end)
 end
@@ -412,7 +412,7 @@ end
 -- View the file changes the agent made this session as a side-by-side diff.
 function M.show_changes()
   if #state.changes == 0 then
-    vim.notify("nursor: no file changes this session", vim.log.levels.INFO)
+    vim.notify("neocursor: no file changes this session", vim.log.levels.INFO)
     return
   end
   if #state.changes == 1 then
@@ -420,7 +420,7 @@ function M.show_changes()
     return
   end
   vim.ui.select(state.changes, {
-    prompt = "nursor: view change",
+    prompt = "neocursor: view change",
     format_item = function(c)
       return string.format("%s %s  (+%s −%s)", diff.status_icon(c), c.rel, c.added or "?", c.removed or "?")
     end,
@@ -434,7 +434,7 @@ end
 local function pick_pending(prompt, cb)
   local pending = diff.pending(state.changes)
   if #pending == 0 then
-    vim.notify("nursor: no pending changes to review", vim.log.levels.INFO)
+    vim.notify("neocursor: no pending changes to review", vim.log.levels.INFO)
     return
   end
   if #pending == 1 then
@@ -459,12 +459,12 @@ function M.accept_change(change)
   end
   local ok, err = diff.accept(change)
   if not ok then
-    vim.notify("nursor: accept failed: " .. tostring(err), vim.log.levels.ERROR)
+    vim.notify("neocursor: accept failed: " .. tostring(err), vim.log.levels.ERROR)
     return false
   end
   render_note("✓ accepted `" .. change.rel .. "`")
   update_winbar()
-  vim.notify("nursor: accepted " .. change.rel, vim.log.levels.INFO)
+  vim.notify("neocursor: accepted " .. change.rel, vim.log.levels.INFO)
   return true
 end
 
@@ -474,29 +474,29 @@ function M.reject_change(change)
   end
   local ok, err = diff.reject(change)
   if not ok then
-    vim.notify("nursor: reject failed: " .. tostring(err), vim.log.levels.ERROR)
+    vim.notify("neocursor: reject failed: " .. tostring(err), vim.log.levels.ERROR)
     return false
   end
   render_note("✗ rejected `" .. change.rel .. "` (file restored)")
   update_winbar()
-  vim.notify("nursor: rejected " .. change.rel .. " (reverted)", vim.log.levels.INFO)
+  vim.notify("neocursor: rejected " .. change.rel .. " (reverted)", vim.log.levels.INFO)
   return true
 end
 
 function M.accept_changes()
-  pick_pending("nursor: accept change", function(c)
+  pick_pending("neocursor: accept change", function(c)
     M.accept_change(c)
   end)
 end
 
 function M.reject_changes()
-  pick_pending("nursor: reject change", function(c)
+  pick_pending("neocursor: reject change", function(c)
     M.reject_change(c)
   end)
 end
 
 function M.review_changes()
-  pick_pending("nursor: review change", function(change)
+  pick_pending("neocursor: review change", function(change)
     diff.review(change, {
       on_accept = function(c)
         M.accept_change(c)
@@ -528,16 +528,16 @@ end
 function M.render_greeting()
   local o = config.options
   append({
-    "# nursor",
+    "# neocursor",
     "",
     "Cursor agent inside Neovim. Type below and press `" .. (o.keymaps.submit or "<C-s>") .. "` to send.",
     "",
     "- `" .. (o.keymaps.new_chat or "<C-n>") .. "` new chat   ",
-    "- `" .. (o.keymaps.toggle_mode or "<C-t>") .. "` switch mode (" .. table.concat(o.mode_cycle, " / ") .. ")   ",
+    "- `" .. (o.keymaps.toggle_mode or "<M-t>") .. "` switch mode (" .. table.concat(o.mode_cycle, " / ") .. ")   ",
     "- `" .. (o.keymaps.model or "<C-g>") .. "` pick model   ",
     "- `" .. (o.keymaps.review or o.keymaps.diff or "<C-y>") .. "` review changes   ",
     "- `" .. (o.keymaps.accept or "<C-a>") .. "` accept · `" .. (o.keymaps.reject or "<C-x>") .. "` reject   ",
-    "- `:NursorAsk` (visual) ask about selected lines",
+    "- `:NeocursorAsk` (visual) ask about selected lines",
     "",
     "---",
     "",
@@ -575,60 +575,60 @@ local function apply_panel_keymaps()
   -- Prompt buffer: submit & control.
   map(state.prompt_buf, { "n", "i" }, k.submit, function()
     M.submit()
-  end, "nursor: submit")
+  end, "neocursor: submit")
   map(state.prompt_buf, "n", k.submit_normal, function()
     M.submit()
-  end, "nursor: submit")
+  end, "neocursor: submit")
   map(state.prompt_buf, { "n", "i" }, k.new_chat, function()
     M.new_chat()
-  end, "nursor: new chat")
+  end, "neocursor: new chat")
   map(state.prompt_buf, { "n", "i" }, k.toggle_mode, function()
     M.toggle_mode()
-  end, "nursor: toggle mode")
+  end, "neocursor: toggle mode")
   map(state.prompt_buf, { "n", "i" }, k.stop, function()
     M.stop()
-  end, "nursor: stop")
+  end, "neocursor: stop")
   map(state.prompt_buf, { "n", "i" }, k.model, function()
     M.pick_model()
-  end, "nursor: pick model")
+  end, "neocursor: pick model")
   map(state.prompt_buf, "n", k.review or k.diff, function()
     M.review_changes()
-  end, "nursor: review changes")
+  end, "neocursor: review changes")
   map(state.prompt_buf, "n", k.accept, function()
     M.accept_changes()
-  end, "nursor: accept change")
+  end, "neocursor: accept change")
   map(state.prompt_buf, "n", k.reject, function()
     M.reject_changes()
-  end, "nursor: reject change")
+  end, "neocursor: reject change")
   map(state.prompt_buf, "n", k.close, function()
     M.close()
-  end, "nursor: close")
+  end, "neocursor: close")
 
   -- Conversation buffer: navigation.
   map(state.conv_buf, "n", k.close, function()
     M.close()
-  end, "nursor: close")
+  end, "neocursor: close")
   map(state.conv_buf, "n", k.new_chat, function()
     M.new_chat()
-  end, "nursor: new chat")
+  end, "neocursor: new chat")
   map(state.conv_buf, "n", k.toggle_mode, function()
     M.toggle_mode()
-  end, "nursor: toggle mode")
+  end, "neocursor: toggle mode")
   map(state.conv_buf, "n", k.model, function()
     M.pick_model()
-  end, "nursor: pick model")
+  end, "neocursor: pick model")
   map(state.conv_buf, "n", k.review or k.diff, function()
     M.review_changes()
-  end, "nursor: review changes")
+  end, "neocursor: review changes")
   map(state.conv_buf, "n", k.accept, function()
     M.accept_changes()
-  end, "nursor: accept change")
+  end, "neocursor: accept change")
   map(state.conv_buf, "n", k.reject, function()
     M.reject_changes()
-  end, "nursor: reject change")
+  end, "neocursor: reject change")
   map(state.conv_buf, "n", k.focus_prompt, function()
     M.focus_prompt()
-  end, "nursor: focus prompt")
+  end, "neocursor: focus prompt")
 end
 
 function M.is_open()

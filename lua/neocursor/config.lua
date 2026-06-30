@@ -1,4 +1,4 @@
--- nursor: configuration defaults and merge logic.
+-- neocursor: configuration defaults and merge logic.
 local M = {}
 
 M.defaults = {
@@ -11,7 +11,7 @@ M.defaults = {
   -- Default capability when a panel is opened: "ask" (read-only Q&A) or "agent".
   default_mode = "ask",
 
-  -- Modes the <C-t> toggle cycles through, in order.
+  -- Modes the <M-t> toggle cycles through, in order (inside the panel).
   mode_cycle = { "ask", "agent" },
 
   -- Pass --trust so the workspace is trusted in headless mode (no prompt).
@@ -53,7 +53,7 @@ M.defaults = {
     submit = "<C-s>",        -- submit prompt (insert + normal mode)
     submit_normal = "<CR>",  -- submit prompt (normal mode only)
     new_chat = "<C-n>",      -- start a fresh chat (clears session)
-    toggle_mode = "<C-t>",   -- cycle through mode_cycle
+    toggle_mode = "<M-t>",   -- Alt+t: cycle mode (avoid <C-t> — Vim tag pop / E73)
     model = "<C-g>",         -- open the model picker
     review = "<C-y>",        -- review a pending change (side-by-side + accept/reject)
     accept = "<C-a>",        -- accept a pending change (keep agent edit)
@@ -64,10 +64,10 @@ M.defaults = {
     stop = "<C-c>",          -- stop an in-flight response
   },
 
-  -- Optional GLOBAL keymaps. Only applied when require("nursor").setup{} is
+  -- Optional GLOBAL keymaps. Only applied when require("neocursor").setup{} is
   -- called. Each maps to a command; set to false/nil to skip.
   global_keymaps = {
-    toggle = nil,            -- e.g. "<leader>cc"
+    toggle = nil,            -- e.g. "<leader>cc" — opens/closes panel from any buffer
     ask = nil,               -- e.g. "<leader>ca" (works in normal + visual)
   },
 }

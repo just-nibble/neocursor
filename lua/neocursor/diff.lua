@@ -1,4 +1,4 @@
--- nursor: parsing cursor-agent tool_call events, presenting file changes,
+-- neocursor: parsing cursor-agent tool_call events, presenting file changes,
 -- and accept/reject review (revert to captured "before" on reject).
 local M = {}
 
@@ -180,7 +180,7 @@ function M.show(change)
     local b = vim.api.nvim_get_current_buf()
     vim.api.nvim_buf_set_lines(b, 0, -1, false, after)
     vim.bo[b].buftype = "nofile"
-    pcall(vim.api.nvim_buf_set_name, b, "nursor://after/" .. (change.rel or "file"))
+    pcall(vim.api.nvim_buf_set_name, b, "neocursor://after/" .. (change.rel or "file"))
   end
   vim.cmd("diffthis")
   local ft = vim.bo.filetype
@@ -195,7 +195,7 @@ function M.show(change)
   if ft and ft ~= "" then
     vim.bo[b].filetype = ft
   end
-  pcall(vim.api.nvim_buf_set_name, b, "nursor://before/" .. (change.rel or "file"))
+  pcall(vim.api.nvim_buf_set_name, b, "neocursor://before/" .. (change.rel or "file"))
   vim.cmd("diffthis")
 end
 
@@ -210,7 +210,7 @@ function M.review(change, opts)
   M.show(change)
   local tab = vim.api.nvim_get_current_tabpage()
   local winbar = string.format(
-    " nursor review · %s · %s · a accept · r reject · q close",
+    " neocursor review · %s · %s · a accept · r reject · q close",
     change.rel,
     M.status_label(change)
   )
@@ -225,7 +225,7 @@ function M.review(change, opts)
   end
   set_winbar()
 
-  local group = vim.api.nvim_create_augroup("NursorReview" .. change.id, { clear = true })
+  local group = vim.api.nvim_create_augroup("NeocursorReview" .. change.id, { clear = true })
 
   local function cleanup()
     pcall(vim.api.nvim_del_augroup_by_id, group)
@@ -277,9 +277,9 @@ function M.review(change, opts)
 
   for _, w in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
     local b = vim.api.nvim_win_get_buf(w)
-    vim.keymap.set("n", "a", do_accept, { buffer = b, nowait = true, silent = true, desc = "nursor: accept change" })
-    vim.keymap.set("n", "r", do_reject, { buffer = b, nowait = true, silent = true, desc = "nursor: reject change" })
-    vim.keymap.set("n", "q", close_tab, { buffer = b, nowait = true, silent = true, desc = "nursor: close review" })
+    vim.keymap.set("n", "a", do_accept, { buffer = b, nowait = true, silent = true, desc = "neocursor: accept change" })
+    vim.keymap.set("n", "r", do_reject, { buffer = b, nowait = true, silent = true, desc = "neocursor: reject change" })
+    vim.keymap.set("n", "q", close_tab, { buffer = b, nowait = true, silent = true, desc = "neocursor: close review" })
   end
 end
 

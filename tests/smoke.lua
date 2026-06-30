@@ -1,4 +1,4 @@
--- Headless smoke test for nursor.
+-- Headless smoke test for neocursor.
 local failures = {}
 local function check(cond, msg)
   if cond then
@@ -12,16 +12,16 @@ end
 local cwd = vim.fn.getcwd()
 vim.opt.runtimepath:append(cwd)
 
-local nursor = require("nursor")
-nursor.setup({
+local neocursor = require("neocursor")
+neocursor.setup({
   cmd = cwd .. "/tests/fake-cursor-agent",
   default_mode = "ask",
 })
 
-local ui = require("nursor.ui")
+local ui = require("neocursor.ui")
 
 -- 1. Open the panel.
-nursor.open()
+neocursor.open()
 check(ui.is_open(), "panel opens (conversation + prompt windows)")
 
 -- Find the panel buffers.
@@ -29,7 +29,7 @@ local conv_buf, prompt_buf
 for _, b in ipairs(vim.api.nvim_list_bufs()) do
   if vim.bo[b].filetype == "markdown" and vim.bo[b].buftype == "nofile" then
     local first = (vim.api.nvim_buf_get_lines(b, 0, 1, false))[1] or ""
-    if first:match("^# nursor") then
+    if first:match("^# neocursor") then
       conv_buf = b
     end
   end
@@ -86,10 +86,10 @@ check(vim.trim(prompt_after) == "", "prompt cleared after submit")
 
 -- 4. Mode toggle.
 ui.toggle_mode()
-nursor.open()
+neocursor.open()
 
 -- 5. Selection context build.
-local context = require("nursor.context")
+local context = require("neocursor.context")
 local tmpbuf = vim.api.nvim_create_buf(false, true)
 vim.api.nvim_buf_set_lines(tmpbuf, 0, -1, false, { "line a", "line b", "line c" })
 local sel = context.selection_from_range(tmpbuf, 1, 2)
@@ -99,7 +99,7 @@ check(built.prompt:find("line a") ~= nil and built.prompt:find("explain") ~= nil
 check(built.label ~= nil and built.label:find(":1%-2") ~= nil, "context label has line range")
 
 -- 6. diff module helpers.
-local diff = require("nursor.diff")
+local diff = require("neocursor.diff")
 local name, payload = diff.parse_tool({
   type = "tool_call",
   subtype = "completed",
@@ -130,7 +130,7 @@ local rname, rpayload = diff.parse_tool({
 check(diff.change_from_payload(rname, rpayload) == nil, "read tool is not a change")
 
 -- 7. Model list parsing via the fake binary.
-local agent = require("nursor.agent")
+local agent = require("neocursor.agent")
 local models, mcode
 agent.list_models(function(m, c) models, mcode = m, c end)
 vim.wait(3000, function() return models ~= nil end, 20)
@@ -181,7 +181,7 @@ af:close()
 check(kept == "goodbye world\n", "accept leaves agent edit on disk")
 
 -- 9. Close.
-nursor.close()
+neocursor.close()
 check(not ui.is_open(), "panel closes cleanly")
 
 if #failures > 0 then

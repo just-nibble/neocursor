@@ -1,5 +1,5 @@
--- nursor: runs cursor-agent headless and parses its stream-json (NDJSON) output.
-local config = require("nursor.config")
+-- neocursor: runs cursor-agent headless and parses its stream-json (NDJSON) output.
+local config = require("neocursor.config")
 
 local M = {}
 
