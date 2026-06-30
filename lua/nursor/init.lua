@@ -66,6 +66,18 @@ function M.show_changes()
   ui().show_changes()
 end
 
+function M.review_changes()
+  ui().review_changes()
+end
+
+function M.accept_changes()
+  ui().accept_changes()
+end
+
+function M.reject_changes()
+  ui().reject_changes()
+end
+
 function M.stop()
   ui().stop()
 end

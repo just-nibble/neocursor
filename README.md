@@ -18,9 +18,9 @@ full **agent** that can edit files and run commands.
 - Per-panel **session continuity** (follow-up questions reuse `--resume`).
 - Toggle between **ask** (read-only) and **agent** (can edit) without leaving the panel.
 - **Model picker** (`:NursorModel`) populated from `cursor-agent --list-models`.
-- **View agent changes**: file edits are shown inline as unified-diff hunks, and
-  `:NursorDiff` opens a side-by-side diff (before vs current) of any edit. Edited
-  buffers are reloaded automatically.
+- **View agent changes**: file edits are shown inline as unified-diff hunks. Review
+  each change and **accept** (keep) or **reject** (revert to the pre-edit file).
+  `:NursorReview` opens a side-by-side diff with `a` / `r` keymaps.
 - Token-usage / duration readout after each answer.
 - `:checkhealth nursor`.
 
@@ -72,7 +72,10 @@ require("nursor").setup({})
 | `:NursorAsk {question}` | Ask about the current line. In **visual mode**, ask about the selection. |
 | `:NursorMode` | Cycle the agent mode (ask ⇄ agent). |
 | `:NursorModel` | Pick the model (from `cursor-agent --list-models`). |
-| `:NursorDiff` | View the agent's file changes as a side-by-side diff. |
+| `:NursorReview` | Review a pending change (side-by-side diff; `a` accept, `r` reject). |
+| `:NursorAccept` | Accept a pending change (keep the agent edit). |
+| `:NursorReject` | Reject a pending change (restore the file to before the edit). |
+| `:NursorDiff` | View any change as a read-only side-by-side diff. |
 | `:NursorStop` | Stop an in-flight response. |
 
 Typical flow:
@@ -91,7 +94,9 @@ Typical flow:
 | `<C-n>` | New chat |
 | `<C-t>` | Toggle ask ⇄ agent |
 | `<C-g>` | Pick model |
-| `<C-y>` | View agent file changes (diff) |
+| `<C-y>` | Review pending change (opens diff; `a` accept, `r` reject) |
+| `<C-a>` | Accept pending change |
+| `<C-x>` | Reject pending change (revert file) |
 | `<C-c>` | Stop the current response |
 | `q` | Close the panel |
 | `i` | (in conversation window) jump to the prompt |
@@ -128,8 +133,10 @@ require("nursor").setup({
     submit_normal = "<CR>",
     new_chat = "<C-n>",
     toggle_mode = "<C-t>",
-    model = "<C-g>",           -- open the model picker
-    diff = "<C-y>",            -- view agent file changes
+    model = "<C-g>",
+    review = "<C-y>",
+    accept = "<C-a>",
+    reject = "<C-x>",
     focus_prompt = "i",
     close = "q",
     stop = "<C-c>",
@@ -160,9 +167,9 @@ Each turn spawns `cursor-agent -p --output-format stream-json
 - `assistant` text events with a `timestamp_ms` **and no** `model_call_id` are the
   streaming deltas → rendered live. (Consolidated messages carry `model_call_id`
   or neither, and are skipped to avoid duplication.)
-- `tool_call` (subtype `completed`) → edit-like tools (`editToolCall`, etc.) are
-  rendered as inline diffs and recorded for `:NursorDiff`; other tools show a
-  one-line note.
+- `tool_call` (subtype `completed`) → edit-like tools are rendered as inline diffs,
+  tracked as **pending** until you accept or reject. Reject restores
+  `beforeFullFileContent` to disk.
 - `result` → finalizes the turn and records usage + session id.
 
 ## Tests

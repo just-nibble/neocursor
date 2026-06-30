@@ -73,7 +73,8 @@ check(dup2 == 1, "intermediate (model_call_id) text not duplicated (got " .. dup
 check(conv:find("30 out") ~= nil, "usage line rendered")
 
 -- Tool / diff rendering.
-check(conv:find("✎ edited `[^`]*sample%.txt`") ~= nil, "edit tool rendered with file")
+check(conv:find("edited `[^`]*sample%.txt`") ~= nil, "edit tool rendered with file")
+check(conv:find("pending") ~= nil, "change marked pending in panel")
 check(conv:find("```diff") ~= nil, "diff fence rendered")
 check(conv:find("%+goodbye world") ~= nil, "added line shown in diff")
 check(conv:find("%-hello world") ~= nil, "removed line shown in diff")
@@ -141,7 +142,45 @@ for _, m in ipairs(models or {}) do
 end
 check(has_opus, "model id parsed correctly")
 
--- 8. Close.
+-- 8. Accept / reject review.
+local scratch = cwd .. "/tests/scratch"
+vim.fn.mkdir(scratch, "p")
+local review_file = scratch .. "/review.txt"
+local wf = io.open(review_file, "w")
+wf:write("goodbye world\n")
+wf:close()
+
+local review_change = {
+  id = 99,
+  status = "pending",
+  path = review_file,
+  rel = "tests/scratch/review.txt",
+  before = "hello world\n",
+  after = "goodbye world\n",
+  added = 1,
+  removed = 1,
+}
+check(#diff.pending({ review_change }) == 1, "pending() finds pending change")
+
+local ok_reject = diff.reject(review_change)
+check(ok_reject == true and review_change.status == "rejected", "reject marks change rejected")
+local rf = io.open(review_file, "r")
+local restored = rf:read("*a")
+rf:close()
+check(restored == "hello world\n", "reject restores before content on disk")
+
+local accept_change = vim.deepcopy(review_change)
+accept_change.status = "pending"
+local wf2 = io.open(review_file, "w")
+wf2:write("goodbye world\n")
+wf2:close()
+check(diff.accept(accept_change) == true and accept_change.status == "accepted", "accept marks change accepted")
+local af = io.open(review_file, "r")
+local kept = af:read("*a")
+af:close()
+check(kept == "goodbye world\n", "accept leaves agent edit on disk")
+
+-- 9. Close.
 nursor.close()
 check(not ui.is_open(), "panel closes cleanly")
 

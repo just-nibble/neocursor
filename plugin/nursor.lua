@@ -47,7 +47,19 @@ end, { desc = "Pick the nursor agent model" })
 
 cmd("NursorDiff", function()
   nursor().show_changes()
-end, { desc = "View agent file changes as a diff" })
+end, { desc = "View agent file changes as a diff (read-only)" })
+
+cmd("NursorReview", function()
+  nursor().review_changes()
+end, { desc = "Review a pending agent change (accept or reject)" })
+
+cmd("NursorAccept", function()
+  nursor().accept_changes()
+end, { desc = "Accept a pending agent file change" })
+
+cmd("NursorReject", function()
+  nursor().reject_changes()
+end, { desc = "Reject a pending agent file change (revert)" })
 
 cmd("NursorStop", function()
   nursor().stop()

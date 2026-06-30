@@ -86,10 +86,13 @@ local function winbar_text()
     left = " nursor"
   end
   local sess = state.session_id and "  · session" or "  · new"
-  return string.format("%%#Title#%s%%* · %s · model: %s%s",
+  local pending = #diff.pending(state.changes)
+  local pend = pending > 0 and (" · " .. pending .. " pending") or ""
+  return string.format("%%#Title#%s%%* · %s · model: %s%s%s",
     left,
     state.mode or o.default_mode,
     state.model or "auto",
+    pend,
     sess)
 end
 
@@ -175,20 +178,6 @@ local function render_note(text)
   append({ "_" .. text .. "_", "" })
 end
 
--- Reload an edited file into its buffer (if open and unmodified) so the change
--- is visible immediately.
-local function reload_file(path)
-  if not path or path == "" then
-    return
-  end
-  local bufnr = vim.fn.bufnr(path)
-  if bufnr > 0 and vim.api.nvim_buf_is_loaded(bufnr) and not vim.bo[bufnr].modified then
-    pcall(vim.api.nvim_buf_call, bufnr, function()
-      vim.cmd("silent! edit")
-    end)
-  end
-end
-
 local function render_tool_note(name, payload)
   commit_stream()
   state.rendered_any = true
@@ -199,16 +188,26 @@ end
 local function render_tool_change(change)
   commit_stream()
   state.rendered_any = true
+  local k = config.options.keymaps
   local counts = string.format("(+%s −%s)", change.added or "?", change.removed or "?")
-  append({ "", "**✎ edited `" .. change.rel .. "`** " .. counts, "" })
+  append({ "", "**" .. diff.status_icon(change) .. " edited `" .. change.rel .. "`** " .. counts, "" })
   if change.diff and change.diff ~= "" then
     append({ "```diff" })
     append(diff.diff_hunks(change.diff))
     append({ "```" })
   end
-  append({ "_" .. (config.options.keymaps.diff or "<C-y>") .. " / :NursorDiff to view_", "" })
+  append({
+    string.format(
+      "_%s · `%s` review · `%s` accept · `%s` reject_",
+      diff.status_label(change),
+      k.review or k.diff or "<C-y>",
+      k.accept or "<C-a>",
+      k.reject or "<C-x>"
+    ),
+    "",
+  })
   state.assistant_start = vim.api.nvim_buf_line_count(state.conv_buf)
-  reload_file(change.path)
+  diff.reload_file(change.path)
 end
 
 local function render_error(msg)
@@ -423,12 +422,89 @@ function M.show_changes()
   vim.ui.select(state.changes, {
     prompt = "nursor: view change",
     format_item = function(c)
-      return string.format("%s  (+%s −%s)", c.rel, c.added or "?", c.removed or "?")
+      return string.format("%s %s  (+%s −%s)", diff.status_icon(c), c.rel, c.added or "?", c.removed or "?")
     end,
   }, function(choice)
     if choice then
       diff.show(choice)
     end
+  end)
+end
+
+local function pick_pending(prompt, cb)
+  local pending = diff.pending(state.changes)
+  if #pending == 0 then
+    vim.notify("nursor: no pending changes to review", vim.log.levels.INFO)
+    return
+  end
+  if #pending == 1 then
+    cb(pending[1])
+    return
+  end
+  vim.ui.select(pending, {
+    prompt = prompt,
+    format_item = function(c)
+      return string.format("%s %s  (+%s −%s)", diff.status_icon(c), c.rel, c.added or "?", c.removed or "?")
+    end,
+  }, function(choice)
+    if choice then
+      cb(choice)
+    end
+  end)
+end
+
+function M.accept_change(change)
+  if not change or change.status ~= "pending" then
+    return false
+  end
+  local ok, err = diff.accept(change)
+  if not ok then
+    vim.notify("nursor: accept failed: " .. tostring(err), vim.log.levels.ERROR)
+    return false
+  end
+  render_note("✓ accepted `" .. change.rel .. "`")
+  update_winbar()
+  vim.notify("nursor: accepted " .. change.rel, vim.log.levels.INFO)
+  return true
+end
+
+function M.reject_change(change)
+  if not change or change.status ~= "pending" then
+    return false
+  end
+  local ok, err = diff.reject(change)
+  if not ok then
+    vim.notify("nursor: reject failed: " .. tostring(err), vim.log.levels.ERROR)
+    return false
+  end
+  render_note("✗ rejected `" .. change.rel .. "` (file restored)")
+  update_winbar()
+  vim.notify("nursor: rejected " .. change.rel .. " (reverted)", vim.log.levels.INFO)
+  return true
+end
+
+function M.accept_changes()
+  pick_pending("nursor: accept change", function(c)
+    M.accept_change(c)
+  end)
+end
+
+function M.reject_changes()
+  pick_pending("nursor: reject change", function(c)
+    M.reject_change(c)
+  end)
+end
+
+function M.review_changes()
+  pick_pending("nursor: review change", function(change)
+    diff.review(change, {
+      on_accept = function(c)
+        M.accept_change(c)
+      end,
+      on_reject = function(c)
+        M.reject_change(c)
+      end,
+    })
   end)
 end
 
@@ -459,7 +535,8 @@ function M.render_greeting()
     "- `" .. (o.keymaps.new_chat or "<C-n>") .. "` new chat   ",
     "- `" .. (o.keymaps.toggle_mode or "<C-t>") .. "` switch mode (" .. table.concat(o.mode_cycle, " / ") .. ")   ",
     "- `" .. (o.keymaps.model or "<C-g>") .. "` pick model   ",
-    "- `" .. (o.keymaps.diff or "<C-y>") .. "` view agent changes   ",
+    "- `" .. (o.keymaps.review or o.keymaps.diff or "<C-y>") .. "` review changes   ",
+    "- `" .. (o.keymaps.accept or "<C-a>") .. "` accept · `" .. (o.keymaps.reject or "<C-x>") .. "` reject   ",
     "- `:NursorAsk` (visual) ask about selected lines",
     "",
     "---",
@@ -514,9 +591,15 @@ local function apply_panel_keymaps()
   map(state.prompt_buf, { "n", "i" }, k.model, function()
     M.pick_model()
   end, "nursor: pick model")
-  map(state.prompt_buf, "n", k.diff, function()
-    M.show_changes()
-  end, "nursor: view changes")
+  map(state.prompt_buf, "n", k.review or k.diff, function()
+    M.review_changes()
+  end, "nursor: review changes")
+  map(state.prompt_buf, "n", k.accept, function()
+    M.accept_changes()
+  end, "nursor: accept change")
+  map(state.prompt_buf, "n", k.reject, function()
+    M.reject_changes()
+  end, "nursor: reject change")
   map(state.prompt_buf, "n", k.close, function()
     M.close()
   end, "nursor: close")
@@ -534,9 +617,15 @@ local function apply_panel_keymaps()
   map(state.conv_buf, "n", k.model, function()
     M.pick_model()
   end, "nursor: pick model")
-  map(state.conv_buf, "n", k.diff, function()
-    M.show_changes()
-  end, "nursor: view changes")
+  map(state.conv_buf, "n", k.review or k.diff, function()
+    M.review_changes()
+  end, "nursor: review changes")
+  map(state.conv_buf, "n", k.accept, function()
+    M.accept_changes()
+  end, "nursor: accept change")
+  map(state.conv_buf, "n", k.reject, function()
+    M.reject_changes()
+  end, "nursor: reject change")
   map(state.conv_buf, "n", k.focus_prompt, function()
     M.focus_prompt()
   end, "nursor: focus prompt")
