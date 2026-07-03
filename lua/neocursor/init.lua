@@ -54,6 +54,22 @@ function M.new_chat()
   ui().new_chat()
 end
 
+-- Open an additional, independent panel (parallel session).
+function M.new_panel()
+  ui().open_new_panel()
+end
+
+-- Pick a previous session to view/resume. opts.new_panel opens it in a
+-- fresh panel so several sessions can run side by side.
+function M.sessions(opts)
+  ui().pick_session(opts)
+end
+
+-- Resume the most recent session for this cwd (or a specific session id).
+function M.resume(id, opts)
+  ui().resume_last(id, opts)
+end
+
 function M.toggle_mode()
   ui().toggle_mode()
 end

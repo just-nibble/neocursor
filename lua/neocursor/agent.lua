@@ -4,7 +4,7 @@ local config = require("neocursor.config")
 local M = {}
 
 -- Build the argv used to invoke cursor-agent for a single request.
--- req: { prompt, mode, session_id }
+-- req: { prompt, mode, model, session_id }
 local function build_cmd(req)
   local o = config.options
   local cmd = {
@@ -29,8 +29,11 @@ local function build_cmd(req)
     end
   end
 
-  if o.model and o.model ~= "" then
-    vim.list_extend(cmd, { "--model", o.model })
+  -- Per-request model (panels can use different models); falls back to the
+  -- globally configured one. "auto" / "" mean: let cursor-agent pick.
+  local model = req.model or o.model
+  if model and model ~= "" and model ~= "auto" then
+    vim.list_extend(cmd, { "--model", model })
   end
 
   -- Resume keeps the same conversation/session for follow-up turns.
@@ -48,6 +51,7 @@ end
 -- req fields:
 --   prompt      (string)   final prompt text
 --   mode        (string)   "ask" | "agent" | "plan"
+--   model       (string?)  model id for this request (nil => config/auto)
 --   session_id  (string?)  resume an existing session
 --   cwd         (string?)  working directory for the agent
 --   on_event    (fn(obj))  called per decoded JSON event (on main loop)

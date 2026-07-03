@@ -36,6 +36,21 @@ cmd("NeocursorNew", function()
   neocursor().new_chat()
 end, { desc = "Start a new neocursor chat" })
 
+cmd("NeocursorNewPanel", function()
+  neocursor().new_panel()
+end, { desc = "Open an additional neocursor panel (parallel session)" })
+
+-- With !, the picked session opens in a new panel instead of reusing the
+-- current one — handy for running several sessions at once.
+cmd("NeocursorSessions", function(opts)
+  neocursor().sessions({ new_panel = opts.bang })
+end, { bang = true, desc = "Pick a previous session to view/resume" })
+
+cmd("NeocursorResume", function(opts)
+  local id = (opts.args and opts.args ~= "") and opts.args or nil
+  neocursor().resume(id, { new_panel = opts.bang })
+end, { nargs = "?", bang = true, desc = "Resume the latest (or a specific) neocursor session" })
+
 cmd("NeocursorMode", function()
   neocursor().open()
   neocursor().toggle_mode()

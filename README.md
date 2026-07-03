@@ -16,6 +16,13 @@ full **agent** that can edit files and run commands.
 - Live token streaming via `cursor-agent --output-format stream-json --stream-partial-output`.
 - Ask about a **visual selection** or **current line** (`:NeocursorAsk`).
 - Per-panel **session continuity** (follow-up questions reuse `--resume`).
+- **View & resume sessions** (`:NeocursorSessions`): pick any previous session
+  for the project — the saved transcript is restored and follow-ups continue
+  where it left off. Sessions started from the `cursor-agent` CLI are
+  discovered too.
+- **Multiple sessions at once** (`:NeocursorNewPanel` / `:NeocursorSessions!`):
+  open several panels, each with its own session, mode, model and in-flight
+  response, stacked in the sidebar.
 - Toggle between **ask** (read-only) and **agent** (can edit) without leaving the panel.
 - **Model picker** (`:NeocursorModel`) populated from `cursor-agent --list-models`.
 - **View agent changes**: file edits are shown inline as unified-diff hunks. Review
@@ -40,7 +47,7 @@ cursor-agent login
 
 ```lua
 {
-  "chadify/neocursor",          -- or a local dir: dir = "~/code/chadify-cursor"
+  "just-nibble/neocursor",          -- or a local dir: dir = "~/code/neocursor"
   cmd = { "Neocursor", "NeocursorAsk", "NeocursorOpen", "NeocursorToggle", "NeocursorNew" },
   opts = {
     -- global_keymaps = { toggle = "<leader>cc", ask = "<leader>ca" },
@@ -51,7 +58,7 @@ cursor-agent login
 ### Local checkout (no plugin manager)
 
 ```vim
-set runtimepath+=~/code/chadify-cursor
+set runtimepath+=~/code/neocursor
 ```
 
 Then optionally, in `init.lua`:
@@ -69,6 +76,9 @@ require("neocursor").setup({})
 | `:Neocursor` | Toggle the panel. |
 | `:NeocursorOpen` / `:NeocursorClose` | Open / close the panel. |
 | `:NeocursorNew` | Start a fresh chat (clears the session). |
+| `:NeocursorNewPanel` | Open an **additional panel** — an independent, parallel session. |
+| `:NeocursorSessions[!]` | Pick a previous session to view/resume. With `!`, open it in a new panel. |
+| `:NeocursorResume [id]` | Resume the latest session for this directory (or a specific session id). |
 | `:NeocursorAsk {question}` | Ask about the current line. In **visual mode**, ask about the selection. |
 | `:NeocursorMode` | Cycle the agent mode (ask ⇄ agent). |
 | `:NeocursorModel` | Pick the model (from `cursor-agent --list-models`). |
@@ -85,6 +95,33 @@ Typical flow:
 3. Ask follow-ups — they continue the same session.
 4. Select lines in a file, then `:NeocursorAsk how can I simplify this?`
 
+### Sessions
+
+Every session used through the panel is recorded (id, title from your first
+prompt, mode, model, timestamps) along with a transcript of the rendered
+conversation, under `stdpath("data")/neocursor/`.
+
+- `:NeocursorSessions` lists the sessions for the current directory, newest
+  first (`●` marks ones already open in a panel). Picking one restores its
+  transcript and continues the conversation via `cursor-agent --resume`.
+- `:NeocursorSessions!` resumes the picked session in a **new panel**, so you
+  can keep the current conversation running alongside it.
+- `:NeocursorResume` jumps straight back into the most recent session.
+- Sessions started outside Neovim (plain `cursor-agent` in a terminal) are
+  discovered from `~/.cursor/chats` and can be resumed too — the agent still
+  has their full history even though there is no local transcript.
+  (Discovery needs `md5sum`/`md5`; reading their titles needs `sqlite3`.
+  Both are optional — see `:checkhealth neocursor`.)
+
+### Multiple panels
+
+Each panel is fully independent: its own session, mode, model, pending
+changes, and in-flight response — so several agents can work for you in
+parallel. `<M-n>` (or `:NeocursorNewPanel`) stacks a new panel in the sidebar.
+Commands and keymaps act on the panel your cursor is in (or the last one you
+used). Closing a panel (`q`) keeps its buffers and any running job alive; it
+can be reopened, and its answer keeps streaming in the background.
+
 ### Panel keymaps (buffer-local)
 
 | Key | Action |
@@ -92,6 +129,8 @@ Typical flow:
 | `<C-s>` | Send the prompt (insert or normal mode) |
 | `<CR>` | Send the prompt (normal mode) |
 | `<C-n>` | New chat |
+| `<M-s>` | Sessions picker (view / resume) |
+| `<M-n>` | New panel (parallel session) |
 | `<M-t>` | Toggle ask ⇄ agent (inside panel only) |
 | `<C-g>` | Pick model |
 | `<C-y>` | Review pending change (opens diff; `a` accept, `r` reject) |
@@ -119,6 +158,12 @@ require("neocursor").setup({
     max_selection_lines = 600,
   },
 
+  sessions = {
+    dir = nil,                 -- registry + transcripts; nil => stdpath("data")/neocursor
+    chats_dir = nil,           -- cursor-agent CLI chat store; nil => ~/.cursor/chats
+    max = 50,                  -- max sessions shown in the picker
+  },
+
   ui = {
     width = 0.40,              -- <=1 fraction of columns, >1 absolute
     prompt_height = 6,
@@ -140,6 +185,8 @@ require("neocursor").setup({
     focus_prompt = "i",
     close = "q",
     stop = "<C-c>",
+    sessions = "<M-s>",
+    new_panel = "<M-n>",
   },
 
   global_keymaps = {           -- only applied when setup() is called
@@ -171,6 +218,11 @@ Each turn spawns `cursor-agent -p --output-format stream-json
   tracked as **pending** until you accept or reject. Reject restores
   `beforeFullFileContent` to disk.
 - `result` → finalizes the turn and records usage + session id.
+
+After each turn the session is upserted into a JSON registry and the rendered
+conversation is snapshotted to a transcript file (both under
+`stdpath("data")/neocursor/`), which is what powers `:NeocursorSessions` and
+transcript restore on resume.
 
 ## Tests
 

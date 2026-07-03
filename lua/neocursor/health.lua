@@ -37,6 +37,18 @@ function M.check()
     err("vim.json.decode is required (Neovim 0.7+)")
   end
 
+  -- Optional helpers for discovering sessions started outside Neovim.
+  if vim.fn.executable("md5sum") == 1 or vim.fn.executable("md5") == 1 then
+    ok("md5sum/md5 found: external cursor-agent sessions can be discovered")
+  else
+    warn("md5sum/md5 not found: only sessions started from Neovim will be listed")
+  end
+  if vim.fn.executable("sqlite3") == 1 then
+    ok("sqlite3 found: titles of external sessions can be read")
+  else
+    warn("sqlite3 not found: external sessions will show as untitled")
+  end
+
   local mode = config.options.default_mode
   if mode == "agent" and config.options.agent_force then
     warn("default_mode = 'agent' with agent_force = true: the agent can edit files and run commands without prompts.")

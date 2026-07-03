@@ -16,7 +16,13 @@ local neocursor = require("neocursor")
 neocursor.setup({
   cmd = cwd .. "/tests/fake-cursor-agent",
   default_mode = "ask",
+  sessions = {
+    -- Keep test data out of the real stdpath("data") registry.
+    dir = cwd .. "/tests/scratch/sessions-data",
+    chats_dir = cwd .. "/tests/scratch/chats",
+  },
 })
+vim.fn.delete(cwd .. "/tests/scratch/sessions-data", "rf")
 
 local ui = require("neocursor.ui")
 
@@ -180,7 +186,81 @@ local kept = af:read("*a")
 af:close()
 check(kept == "goodbye world\n", "accept leaves agent edit on disk")
 
--- 9. Close.
+-- 9. Session registry + transcript persistence.
+local sessions = require("neocursor.sessions")
+vim.wait(3000, function()
+  return sessions.get("test-sess-1") ~= nil
+end, 25)
+local rec = sessions.get("test-sess-1")
+check(rec ~= nil, "session recorded in registry after turn")
+check(rec and rec.title == "hi", "session title derived from first prompt")
+check(rec and rec.cwd == cwd, "session cwd recorded")
+local transcript = sessions.load_transcript("test-sess-1")
+check(transcript ~= nil and table.concat(transcript, "\n"):find("## You") ~= nil,
+  "transcript saved with conversation content")
+local listed = sessions.list(cwd)
+check(#listed >= 1 and listed[1].id == "test-sess-1", "sessions.list returns the session for cwd")
+
+-- 10. Discovery of CLI-created sessions (md5 hash dir + meta.json).
+local md5out = vim.fn.system({ "md5sum" }, cwd)
+local hash = md5out:match("%x+")
+if hash and #hash == 32 then
+  local extdir = cwd .. "/tests/scratch/chats/" .. hash .. "/ext-sess-1"
+  vim.fn.mkdir(extdir, "p")
+  local mf = io.open(extdir .. "/meta.json", "w")
+  mf:write('{"schemaVersion":1,"createdAtMs":1700000000000,"hasConversation":true,"updatedAtMs":1700000001000}')
+  mf:close()
+  local all = sessions.list(cwd)
+  local found_ext = false
+  for _, s in ipairs(all) do
+    if s.id == "ext-sess-1" and s.external then
+      found_ext = true
+    end
+  end
+  check(found_ext, "external CLI session discovered from chats dir")
+else
+  print("SKIP: md5sum unavailable, discovery not tested")
+end
+
+-- 11. Multiple panels at once, each with independent state.
+local p2 = ui.open_new_panel()
+check(ui.panel_count() == 2, "second panel opened (2 panels)")
+check(ui.is_open(), "both panels visible")
+vim.api.nvim_buf_set_lines(p2.prompt_buf, 0, -1, false, { "hello again" })
+vim.api.nvim_set_current_win(p2.prompt_win)
+ui.submit()
+local done2 = vim.wait(5000, function()
+  local text = table.concat(vim.api.nvim_buf_get_lines(p2.conv_buf, 0, -1, false), "\n")
+  return text:find("Done, changed hello to goodbye%.") ~= nil
+end, 25)
+check(done2, "second panel streams its own response")
+local conv2 = table.concat(vim.api.nvim_buf_get_lines(p2.conv_buf, 0, -1, false), "\n")
+check(conv2:find("hello again") ~= nil, "second panel rendered its own prompt")
+local conv1_after = table.concat(vim.api.nvim_buf_get_lines(conv_buf, 0, -1, false), "\n")
+check(conv1_after:find("hello again") == nil, "first panel conversation untouched by second panel")
+
+-- 12. Resume: transcript restored, session id set for --resume.
+sessions.save_transcript("resume-42", { "## You", "", "old question", "", "old answer" })
+sessions.record({ id = "resume-42", title = "older session", cwd = cwd, mode = "ask" })
+local p3 = ui.resume({ id = "resume-42", title = "older session", mode = "ask" })
+check(p3 ~= nil and p3.session_id == "resume-42", "resume sets the session id")
+local conv3 = table.concat(vim.api.nvim_buf_get_lines(p3.conv_buf, 0, -1, false), "\n")
+check(conv3:find("old question") ~= nil, "resume restores the saved transcript")
+check(conv3:find("resumed session") ~= nil, "resume note rendered")
+
+-- Resuming a session with no transcript still works (external session).
+local p4 = ui.resume({ id = "ext-sess-1" }, { new_panel = true })
+check(p4 ~= nil and p4.session_id == "ext-sess-1", "resume of external session sets id")
+local conv4 = table.concat(vim.api.nvim_buf_get_lines(p4.conv_buf, 0, -1, false), "\n")
+check(conv4:find("No local transcript") ~= nil, "external resume shows no-transcript note")
+
+-- resume_last picks the most recently updated session for this cwd.
+neocursor.close()
+check(not ui.is_open(), "all panels close cleanly")
+local p5 = ui.resume_last(nil, {})
+check(p5 ~= nil and p5.session_id ~= nil, "resume_last resumes a session")
+
+-- 13. Close.
 neocursor.close()
 check(not ui.is_open(), "panel closes cleanly")
 

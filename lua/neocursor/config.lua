@@ -31,6 +31,17 @@ M.defaults = {
     max_selection_lines = 600,
   },
 
+  sessions = {
+    -- Where neocursor stores its session registry and transcripts.
+    -- nil => stdpath("data") .. "/neocursor".
+    dir = nil,
+    -- Where the cursor-agent CLI stores its chats (for discovering sessions
+    -- started outside Neovim). nil => ~/.cursor/chats.
+    chats_dir = nil,
+    -- Maximum number of sessions shown in the picker.
+    max = 50,
+  },
+
   ui = {
     -- Sidebar width. <= 1 is treated as a fraction of total columns,
     -- > 1 is an absolute column count.
@@ -62,6 +73,8 @@ M.defaults = {
     focus_prompt = "i",      -- from the conversation window, jump to prompt
     close = "q",             -- close the panel (from either window, normal mode)
     stop = "<C-c>",          -- stop an in-flight response
+    sessions = "<M-s>",      -- Alt+s: pick a session to view/resume
+    new_panel = "<M-n>",     -- Alt+n: open an additional panel (parallel session)
   },
 
   -- Optional GLOBAL keymaps. Only applied when require("neocursor").setup{} is
