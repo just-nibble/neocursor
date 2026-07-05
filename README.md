@@ -8,7 +8,7 @@ just like Cursor's chat, but inside Neovim. Ask about the whole file, the
 current line, or a visual selection. Switch between read-only **ask** mode and a
 full **agent** that can edit files and run commands.
 
-![layout](https://placehold.co/640x360?text=neocursor)
+![neocursor — Cursor agent chat in Neovim](assets/neocursor-banner.png)
 
 ## Features
 
