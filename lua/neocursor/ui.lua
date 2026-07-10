@@ -54,6 +54,7 @@ local function new_panel_state()
     model = nil,           -- selected model id for this panel (nil => auto)
     job = nil,
     busy = false,
+    cancelled = false,     -- true when we jobstop()'d; on_done must not treat as error
     got_result = false,
     rendered_any = false,  -- did this turn render any text/tool output?
     stream_text = "",
@@ -421,8 +422,11 @@ end
 
 local function on_done(p, code, stderr)
   p.busy = false
+  local cancelled = p.cancelled
+  p.cancelled = false
+  -- jobstop() → exit 143 (SIGTERM). Intentional cancel already noted in the panel.
   local job_failed = (code ~= 0)
-  if job_failed and not p.got_result then
+  if job_failed and not p.got_result and not cancelled then
     local msg = stderr ~= "" and stderr or ("cursor-agent exited with code " .. tostring(code))
     render_error(p, msg)
   end
@@ -476,6 +480,7 @@ local function submit_panel(p)
   start_assistant_block(p)
 
   p.busy = true
+  p.cancelled = false
   p.got_result = false
   p.turns = p.turns + 1
   p.cwd = vim.fn.getcwd()
@@ -507,6 +512,7 @@ end
 function M.stop()
   local p = current_panel()
   if p and p.job then
+    p.cancelled = true
     agent.stop(p.job)
     render_note(p, "⏹ stopped")
   end
@@ -715,6 +721,7 @@ function M.new_chat()
     return
   end
   if p.busy and p.job then
+    p.cancelled = true
     agent.stop(p.job)
     p.busy = false
     stop_spinner(p)
@@ -796,6 +803,7 @@ local function apply_panel_keymaps(p)
   end, "neocursor: submit")
   map(p.prompt_buf, { "n", "i" }, k.stop, function()
     if p.job then
+      p.cancelled = true
       agent.stop(p.job)
       render_note(p, "⏹ stopped")
     end
