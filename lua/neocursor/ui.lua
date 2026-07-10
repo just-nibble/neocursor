@@ -9,6 +9,7 @@ local config = require("neocursor.config")
 local agent = require("neocursor.agent")
 local context = require("neocursor.context")
 local diff = require("neocursor.diff")
+local inline_diff = require("neocursor.inline_diff")
 local sessions = require("neocursor.sessions")
 
 local M = {}
@@ -301,9 +302,10 @@ local function render_tool_change(p, change)
   end
   append(p, {
     string.format(
-      "_%s · `%s` review · `%s` accept · `%s` reject_",
+      "_%s · `%s` review · `%s` inline · `%s` accept · `%s` reject_",
       diff.status_label(change),
       k.review or k.diff or "<C-y>",
+      k.inline_diff or "<M-d>",
       k.accept or "<C-a>",
       k.reject or "<C-x>"
     ),
@@ -674,6 +676,39 @@ function M.review_changes()
   end)
 end
 
+-- Avante-style inline review: open the change inside the file's own buffer with
+-- colour highlights and accept/reject each hunk in place. The inline_diff
+-- module owns disk writes, so we only reflect the outcome in the panel state
+-- (status + winbar) rather than re-touching the file via diff.accept/reject.
+function M.inline_diff_changes()
+  pick_pending("neocursor: inline diff", function(change)
+    local p = current_panel()
+    inline_diff.open(change, {
+      on_accept = function(c)
+        c.status = "accepted"
+        if p then
+          render_note(p, "✓ accepted `" .. c.rel .. "` (inline)")
+          update_winbar(p)
+        end
+      end,
+      on_reject = function(c)
+        c.status = "rejected"
+        if p then
+          render_note(p, "✗ rejected `" .. c.rel .. "` (inline, file restored)")
+          update_winbar(p)
+        end
+      end,
+      on_partial = function(c)
+        c.status = "accepted"
+        if p then
+          render_note(p, "◐ partially applied `" .. c.rel .. "` (inline)")
+          update_winbar(p)
+        end
+      end,
+    })
+  end)
+end
+
 function M.new_chat()
   local p = current_panel()
   if not p then
@@ -715,6 +750,7 @@ function M.render_greeting(p)
     "- `" .. (o.keymaps.toggle_mode or "<M-t>") .. "` switch mode (" .. table.concat(o.mode_cycle, " / ") .. ")   ",
     "- `" .. (o.keymaps.model or "<C-g>") .. "` pick model   ",
     "- `" .. (o.keymaps.review or o.keymaps.diff or "<C-y>") .. "` review changes   ",
+    "- `" .. (o.keymaps.inline_diff or "<M-d>") .. "` inline diff (colour-highlighted, in the file)   ",
     "- `" .. (o.keymaps.accept or "<C-a>") .. "` accept · `" .. (o.keymaps.reject or "<C-x>") .. "` reject   ",
     "- `:NeocursorAsk` (visual) ask about selected lines",
     "",
@@ -785,6 +821,9 @@ local function apply_panel_keymaps(p)
     map(buf, "n", k.review or k.diff, function()
       M.review_changes()
     end, "neocursor: review changes")
+    map(buf, "n", k.inline_diff, function()
+      M.inline_diff_changes()
+    end, "neocursor: inline diff")
     map(buf, "n", k.accept, function()
       M.accept_changes()
     end, "neocursor: accept change")

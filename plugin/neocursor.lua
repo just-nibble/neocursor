@@ -68,6 +68,10 @@ cmd("NeocursorReview", function()
   neocursor().review_changes()
 end, { desc = "Review a pending agent change (accept or reject)" })
 
+cmd("NeocursorInlineDiff", function()
+  neocursor().inline_diff()
+end, { desc = "Review a pending agent change inline in the file (colour-highlighted)" })
+
 cmd("NeocursorAccept", function()
   neocursor().accept_changes()
 end, { desc = "Accept a pending agent file change" })

@@ -67,6 +67,7 @@ M.defaults = {
     toggle_mode = "<M-t>",   -- Alt+t: cycle mode (avoid <C-t> — Vim tag pop / E73)
     model = "<C-g>",         -- open the model picker
     review = "<C-y>",        -- review a pending change (side-by-side + accept/reject)
+    inline_diff = "<M-d>",   -- Alt+d: review a pending change inline (in the file, colour-highlighted)
     accept = "<C-a>",        -- accept a pending change (keep agent edit)
     reject = "<C-x>",        -- reject a pending change (revert file)
     diff = "<C-y>",          -- alias for review (deprecated name)
@@ -75,6 +76,29 @@ M.defaults = {
     stop = "<C-c>",          -- stop an in-flight response
     sessions = "<M-s>",      -- Alt+s: pick a session to view/resume
     new_panel = "<M-n>",     -- Alt+n: open an additional panel (parallel session)
+  },
+
+  -- Avante-style inline diff: show an agent change inside the file's own
+  -- buffer with colour highlights and accept/reject each hunk in place.
+  inline_diff = {
+    -- Buffer-local keymaps active only while reviewing a change inline.
+    -- <leader>-prefixed by default so they don't shadow builtins (a/r/q/…).
+    keymaps = {
+      accept = "<leader>da",     -- accept the hunk under the cursor (keep agent edit)
+      reject = "<leader>dr",     -- reject the hunk under the cursor (restore original)
+      accept_all = "<leader>dA", -- accept every remaining hunk
+      reject_all = "<leader>dR", -- reject every remaining hunk
+      next = "<leader>dn",       -- jump to the next pending hunk
+      prev = "<leader>dN",       -- jump to the previous pending hunk
+      quit = "<leader>dq",       -- finish the inline review (keeps current buffer state)
+    },
+    -- Highlight groups used for the overlay. They are linked to the built-in
+    -- DiffAdd / DiffDelete groups by default (only if not already defined), so
+    -- they follow your colorscheme. Override or predefine them to recolour.
+    highlights = {
+      add = "NeocursorInlineAdd",       -- added / changed lines (green)
+      delete = "NeocursorInlineDelete", -- removed original lines (red)
+    },
   },
 
   -- Optional GLOBAL keymaps. Only applied when require("neocursor").setup{} is

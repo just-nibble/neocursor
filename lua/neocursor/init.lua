@@ -86,6 +86,12 @@ function M.review_changes()
   ui().review_changes()
 end
 
+-- Review a pending change inline (avante-style): colour-highlighted in the
+-- file's own buffer, accept/reject each hunk in place.
+function M.inline_diff()
+  ui().inline_diff_changes()
+end
+
 function M.accept_changes()
   ui().accept_changes()
 end

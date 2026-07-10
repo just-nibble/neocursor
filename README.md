@@ -28,6 +28,12 @@ full **agent** that can edit files and run commands.
 - **View agent changes**: file edits are shown inline as unified-diff hunks. Review
   each change and **accept** (keep) or **reject** (revert to the pre-edit file).
   `:NeocursorReview` opens a side-by-side diff with `a` / `r` keymaps.
+- **Avante-style inline diff** (`:NeocursorInlineDiff`): review a change *in the
+  file's own buffer* with colour highlights — added/changed lines highlighted
+  green, the removed original shown as red virtual lines above them — and
+  **accept** or **reject** each hunk in place (`<leader>da`/`<leader>dr`,
+  `<leader>dA`/`<leader>dR` for all, `<leader>dn`/`<leader>dN` to move between
+  hunks).
 - Token-usage / duration readout after each answer.
 - `:checkhealth neocursor`.
 
@@ -83,6 +89,7 @@ require("neocursor").setup({})
 | `:NeocursorMode` | Cycle the agent mode (ask ⇄ agent). |
 | `:NeocursorModel` | Pick the model (from `cursor-agent --list-models`). |
 | `:NeocursorReview` | Review a pending change (side-by-side diff; `a` accept, `r` reject). |
+| `:NeocursorInlineDiff` | Review a pending change **inline** in the file (colour-highlighted; accept/reject each hunk). |
 | `:NeocursorAccept` | Accept a pending change (keep the agent edit). |
 | `:NeocursorReject` | Reject a pending change (restore the file to before the edit). |
 | `:NeocursorDiff` | View any change as a read-only side-by-side diff. |
@@ -134,11 +141,42 @@ can be reopened, and its answer keeps streaming in the background.
 | `<M-t>` | Toggle ask ⇄ agent (inside panel only) |
 | `<C-g>` | Pick model |
 | `<C-y>` | Review pending change (opens diff; `a` accept, `r` reject) |
+| `<M-d>` | Inline diff pending change (colour-highlighted, in the file) |
 | `<C-a>` | Accept pending change |
 | `<C-x>` | Reject pending change (revert file) |
 | `<C-c>` | Stop the current response |
 | `q` | Close the panel |
 | `i` | (in conversation window) jump to the prompt |
+
+### Inline diff (avante-style)
+
+`:NeocursorInlineDiff` (or `<M-d>` in the panel) opens the pending change **in
+the file itself** instead of a separate diff tab. The change is shown with
+colour highlights:
+
+- added / changed lines are highlighted green in place,
+- the removed original lines appear as red virtual lines above them.
+
+Review each hunk right there in the buffer (keys are buffer-local and only
+active during the review):
+
+| Key | Action |
+| --- | --- |
+| `<leader>da` | Accept the hunk under the cursor (keep the agent's version) |
+| `<leader>dr` | Reject the hunk under the cursor (restore the original lines) |
+| `<leader>dA` | Accept all remaining hunks |
+| `<leader>dR` | Reject all remaining hunks |
+| `<leader>dn` / `<leader>dN` | Jump to the next / previous pending hunk |
+| `<leader>dq` | Finish the review (keeps the current buffer state) |
+
+(These defaults are `<leader>`-prefixed so they don't shadow builtins; remap
+them under `inline_diff.keymaps` if you prefer shorter keys.)
+
+Rejecting writes the restored content back to disk, so the file always matches
+what you see. Once every hunk is decided the review ends automatically and the
+panel records the change as accepted, rejected, or partially applied. The
+highlight groups (`NeocursorInlineAdd` / `NeocursorInlineDelete`) link to
+`DiffAdd` / `DiffDelete` by default — override them to recolour.
 
 ## Configuration
 
@@ -180,6 +218,7 @@ require("neocursor").setup({
     toggle_mode = "<M-t>",
     model = "<C-g>",
     review = "<C-y>",
+    inline_diff = "<M-d>",   -- review a change inline (colour-highlighted, in the file)
     accept = "<C-a>",
     reject = "<C-x>",
     focus_prompt = "i",
@@ -187,6 +226,22 @@ require("neocursor").setup({
     stop = "<C-c>",
     sessions = "<M-s>",
     new_panel = "<M-n>",
+  },
+
+  inline_diff = {              -- avante-style in-file review (colour-highlighted)
+    keymaps = {                -- buffer-local, active only while reviewing inline
+      accept = "<leader>da",     -- accept the hunk under the cursor
+      reject = "<leader>dr",     -- reject the hunk under the cursor (restore original)
+      accept_all = "<leader>dA", -- accept every remaining hunk
+      reject_all = "<leader>dR", -- reject every remaining hunk
+      next = "<leader>dn",       -- next pending hunk
+      prev = "<leader>dN",       -- previous pending hunk
+      quit = "<leader>dq",       -- finish the inline review
+    },
+    highlights = {             -- linked to DiffAdd / DiffDelete by default
+      add = "NeocursorInlineAdd",
+      delete = "NeocursorInlineDelete",
+    },
   },
 
   global_keymaps = {           -- only applied when setup() is called

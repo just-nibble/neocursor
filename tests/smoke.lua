@@ -11,6 +11,10 @@ end
 
 local cwd = vim.fn.getcwd()
 vim.opt.runtimepath:append(cwd)
+-- Headless: never prompt about swap files when the inline diff opens a file.
+vim.o.swapfile = false
+-- Deterministic leader so the <leader>-prefixed inline-diff keymaps are known.
+vim.g.mapleader = ","
 
 local neocursor = require("neocursor")
 neocursor.setup({
@@ -260,7 +264,50 @@ check(not ui.is_open(), "all panels close cleanly")
 local p5 = ui.resume_last(nil, {})
 check(p5 ~= nil and p5.session_id ~= nil, "resume_last resumes a session")
 
--- 13. Close.
+-- 13. Inline diff (avante-style): pure helpers + a live reject-all flow.
+local inline = require("neocursor.inline_diff")
+local ib, ia = "a\nb\nc\n", "a\nB\nc\nd\n"
+local blocks = inline.build_blocks(ib, ia)
+check(table.concat(inline.render_content(blocks), "\n") == "a\nB\nc\nd",
+  "inline: pending/accepted blocks render the 'after' file")
+check(#inline.compute_hunks(ib, ia) >= 1, "inline: compute_hunks detects changes")
+for _, blk in ipairs(blocks) do
+  if blk.kind == "hunk" then blk.decision = "reject" end
+end
+check(table.concat(inline.render_content(blocks), "\n") == "a\nb\nc",
+  "inline: all-rejected blocks render the 'before' file")
+
+-- Live: the file on disk holds the agent's "after"; reject-all must restore it.
+local inline_file = scratch .. "/inline.txt"
+local iwf = io.open(inline_file, "w")
+iwf:write(ia)
+iwf:close()
+local inline_change = {
+  id = 101, status = "pending", path = inline_file, rel = "tests/scratch/inline.txt",
+  before = ib, after = ia, added = 2, removed = 1,
+}
+vim.cmd("tabnew") -- give open_file a normal window to use
+local rejected_reported = false
+local ist = inline.open(inline_change, {
+  on_reject = function(c) c.status = "rejected"; rejected_reported = true end,
+  on_accept = function(c) c.status = "accepted" end,
+  on_partial = function(c) c.status = "accepted" end,
+})
+check(ist ~= nil and inline._states[ist.buf] ~= nil, "inline: open registers review state")
+local ins = vim.api.nvim_create_namespace("neocursor_inline_diff")
+check(#vim.api.nvim_buf_get_extmarks(ist.buf, ins, 0, -1, {}) > 0, "inline: overlay extmarks placed")
+vim.api.nvim_set_current_win(ist.win)
+-- Trigger reject-all via its buffer-local keymap (<leader>dR, leader = ",").
+vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(",dR", true, false, true), "mx", false)
+vim.wait(300, function() return inline._states[ist.buf] == nil end, 20)
+local irf = io.open(inline_file, "r")
+local ires = irf:read("*a")
+irf:close()
+check(ires == ib, "inline: reject-all restores the original file on disk")
+check(rejected_reported and inline_change.status == "rejected", "inline: reject-all reports rejected")
+check(inline._states[ist.buf] == nil, "inline: state cleaned up after finishing")
+
+-- 14. Close.
 neocursor.close()
 check(not ui.is_open(), "panel closes cleanly")
 
